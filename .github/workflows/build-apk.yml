@@ -17,19 +17,24 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Install Gradle
+        run: |
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.9-bin.zip -o gradle.zip
+          unzip -q gradle.zip
+          echo "$GITHUB_WORKSPACE/gradle-8.9/bin" >> "$GITHUB_PATH"
+
       - name: Extract project
         run: unzip -q Kairo-Android-Source.zip -d project
 
       - name: Build APK
         run: |
-          GRADLEW=$(find project -name gradlew -type f | head -n 1)
-          if [ -z "$GRADLEW" ]; then
-            echo "Gradle wrapper not found"
+          SETTINGS=$(find project -type f \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)
+          if [ -z "$SETTINGS" ]; then
+            echo "Gradle settings file not found"
             exit 1
           fi
-          cd "$(dirname "$GRADLEW")"
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          cd "$(dirname "$SETTINGS")"
+          gradle assembleDebug --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
