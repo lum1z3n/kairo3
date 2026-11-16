@@ -1,0 +1,50 @@
+name: Build Kairo APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Extract Kairo source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE="$(find . -maxdepth 2 -type f -iname '*.zip' | head -n 1)"
+          if [ -z "$ARCHIVE" ]; then
+            echo "No source ZIP found. Upload Kairo-Android-Source.zip to the repository root."
+            exit 1
+          fi
+          mkdir -p extracted
+          unzip -q "$ARCHIVE" -d extracted
+          PROJECT_DIR="$(find extracted -name settings.gradle.kts -printf '%h\n' | head -n 1)"
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "Could not find settings.gradle.kts inside the ZIP."
+            exit 1
+          fi
+          cp -a "$PROJECT_DIR"/. .
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kairo-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
